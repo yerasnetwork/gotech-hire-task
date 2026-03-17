@@ -7,9 +7,11 @@ A real-time chat application built with **NestJS + React + PostgreSQL + Socket.I
 You are reviewing a codebase written by a developer in a hurry. The application works, but it contains **realistic engineering flaws** across four categories. Your job is to:
 
 1. **Identify** the issues in each category
-2. **Fix** as many as you can in 4–6 hours
-3. **Submit a PR** with your changes + a short write-up explaining each fix
+2. **Fix** as many as you can until your deadline
+3. **Fork the repo** 
+4. **Submit a PR** to your fork with your changes + a short write-up explaining each fix
 
+You are allowed to use whatever you want, but you have to fully understand the final solution. 
 > **Depth over breadth.** A thorough fix with clear reasoning beats a shallow scan.
 
 ---
