@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 
 // FLAW: hardcoded URL (occurrence 3 of 4)
-const API_URL = 'http://localhost:3000';
+// Исправлено: URL читается из переменной окружения Vite с fallback на localhost
+const API_URL = (import.meta as any).env?.VITE_API_URL || 'http://localhost:3000';
 
 interface Props {
   onLogin: (token: string, userId: number) => void;
@@ -21,7 +22,7 @@ export default function RegisterPage({ onLogin }: Props) {
     });
     const data = await res.json();
     if (data.token) {
-      localStorage.setItem('token', data.token);
+      // Исправлено: localStorage.setItem убран отсюда — сохранение токена делается в App.handleLogin (единственное место)
       onLogin(data.token, data.userId);
     }
   };

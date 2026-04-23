@@ -1,4 +1,4 @@
-import React, { Component } from 'react';
+import React from 'react';
 
 interface Props {
   username: string;
@@ -6,43 +6,24 @@ interface Props {
   onLogout: () => void;
 }
 
-interface State {
-  status: number;
-}
-
 // FLAW: class component in an otherwise functional React codebase
-export default class Header extends Component<Props, State> {
-  constructor(props: Props) {
-    super(props);
-    this.state = {
-      status: 1,
-    };
-  }
+// Исправлено: переписан как функциональный компонент — единообразие с остальной кодовой базой
 
-  componentDidUpdate(prevProps: Props) {
-    if (prevProps.isConnected !== this.props.isConnected) {
-      // FLAW: magic number - 2 means "connected", 1 means "disconnected"
-      this.setState({ status: this.props.isConnected ? 2 : 1 });
-    }
-  }
-
-  render() {
-    const { username, onLogout } = this.props;
-    const { status } = this.state;
-
-    return (
-      <div style={{ marginBottom: '15px', paddingBottom: '10px', borderBottom: '1px solid #ddd' }}>
-        <div style={{ fontWeight: 'bold', marginBottom: '5px' }}>{username || 'Loading...'}</div>
-        <div style={{ fontSize: '12px', color: status === 2 ? 'green' : 'gray', marginBottom: '8px' }}>
-          {status === 2 ? 'Connected' : 'Disconnected'}
-        </div>
-        <button
-          onClick={onLogout}
-          style={{ fontSize: '12px', padding: '4px 8px', cursor: 'pointer', width: '100%' }}
-        >
-          Logout
-        </button>
+// FLAW: magic number - 2 means "connected", 1 means "disconnected"
+// Исправлено: magic numbers 1/2 устранены — используется isConnected boolean напрямую
+export default function Header({ username, isConnected, onLogout }: Props) {
+  return (
+    <div style={{ marginBottom: '15px', paddingBottom: '10px', borderBottom: '1px solid #ddd' }}>
+      <div style={{ fontWeight: 'bold', marginBottom: '5px' }}>{username || 'Loading...'}</div>
+      <div style={{ fontSize: '12px', color: isConnected ? 'green' : 'gray', marginBottom: '8px' }}>
+        {isConnected ? 'Connected' : 'Disconnected'}
       </div>
-    );
-  }
+      <button
+        onClick={onLogout}
+        style={{ fontSize: '12px', padding: '4px 8px', cursor: 'pointer', width: '100%' }}
+      >
+        Logout
+      </button>
+    </div>
+  );
 }

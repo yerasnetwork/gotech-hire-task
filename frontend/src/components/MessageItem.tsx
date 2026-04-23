@@ -1,5 +1,4 @@
 import React from 'react';
-import { Socket } from 'socket.io-client';
 
 interface Message {
   id: number;
@@ -10,12 +9,13 @@ interface Message {
   user_id: number;
 }
 
+// Исправлено: убраны пропы-артефакты prop drilling (token, socket, apiUrl) — никогда не использовались
 interface Props {
   message: Message;
   isOwn: boolean;
-  token: string;    // prop drilling artifact - never used in this component
-  socket: Socket;   // prop drilling artifact - never used in this component
-  apiUrl: string;   // prop drilling artifact - never used in this component
+  // token: string;    // prop drilling artifact - never used in this component
+  // socket: Socket;   // prop drilling artifact - never used in this component
+  // apiUrl: string;   // prop drilling artifact - never used in this component
 }
 
 export default function MessageItem({ message, isOwn }: Props) {
@@ -45,8 +45,10 @@ export default function MessageItem({ message, isOwn }: Props) {
           color: isOwn ? 'white' : 'black',
         }}
         // FLAW: XSS vulnerability - no sanitization
-        dangerouslySetInnerHTML={{ __html: message.content }}
-      />
+        // Исправлено: dangerouslySetInnerHTML заменён на безопасный текстовый рендеринг — XSS устранён
+      >
+        {message.content}
+      </div>
     </div>
   );
 }

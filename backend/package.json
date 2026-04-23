@@ -20,11 +20,13 @@
     "rxjs": "^7.8.0",
     "socket.io": "^4.6.0",
     "@nestjs/typeorm": "^10.0.0",
-    "typeorm": "^0.3.17"
+    "typeorm": "^0.3.17",
+    "bcrypt": "^5.1.0"
   },
   "devDependencies": {
     "@types/jsonwebtoken": "^9.0.0",
     "@types/node": "^20.0.0",
+    "@types/bcrypt": "^5.0.0",
     "ts-node": "^10.9.0",
     "typescript": "^5.0.0"
   }

@@ -28,6 +28,8 @@ services:
       DB_PASSWORD: postgres
       DB_NAME: chatdb
       # JWT_SECRET intentionally omitted - hardcoded in source as a flaw
+      # Исправлено: JWT_SECRET передаётся через env, больше не хардкодится в коде
+      JWT_SECRET: change-me-in-production
     depends_on:
       postgres:
         condition: service_healthy

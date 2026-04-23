@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Socket } from 'socket.io-client';
 import RoomList from './RoomList';
 import MessageItem from './MessageItem';
@@ -10,12 +10,15 @@ interface Room {
   description?: string;
 }
 
+// Исправлено: добавлены поля room_id и user_id — нужны для фильтрации WS-сообщений и проверки isOwn
 interface Message {
   id: number;
+  room_id: number;
   content: string;
   username: string;
   senderName: string;
   createdAt: string;
+  user_id: number;
 }
 
 interface Props {
@@ -27,9 +30,9 @@ interface Props {
 }
 
 export default function ChatPage({ token, userId, socket, apiUrl, onLogout }: Props) {
-  const [rooms, setRooms] = useState<any[]>([]);
+  const [rooms, setRooms] = useState<Room[]>([]); // Исправлено: тип Room[] вместо any[]
   const [selectedRoom, setSelectedRoom] = useState<Room | null>(null);
-  const [messages, setMessages] = useState<any[]>([]);
+  const [messages, setMessages] = useState<Message[]>([]); // Исправлено: тип Message[] вместо any[]
   const [newMessage, setNewMessage] = useState('');
   const [newRoomName, setNewRoomName] = useState('');
   const [newRoomDesc, setNewRoomDesc] = useState('');
@@ -39,7 +42,8 @@ export default function ChatPage({ token, userId, socket, apiUrl, onLogout }: Pr
   const [loadingMessages, setLoadingMessages] = useState(false);
 
   // FLAW: hardcoded URL (occurrence 4 of 4) - should use apiUrl prop
-  const HARDCODED_API = 'http://localhost:3000';
+  // Исправлено: убрана HARDCODED_API константа — используется apiUrl проп
+  const selectedRoomRef = useRef<Room | null>(null); // Исправлено: ref для доступа к selectedRoom внутри WS-обработчика без stale closure
 
   useEffect(() => {
     fetchRooms();
@@ -54,32 +58,37 @@ export default function ChatPage({ token, userId, socket, apiUrl, onLogout }: Pr
     });
 
     // FLAW: on every WS message, re-fetches ALL messages via REST instead of just appending
+    // should just be: setMessages(prev => [...prev, message]);
+    // Исправлено: новое сообщение добавляется в конец списка без повторной загрузки всех сообщений
     socket.on('newMessage', (message: any) => {
-      console.log('New message received:', message);
-      // should just be: setMessages(prev => [...prev, message]);
-      if (selectedRoom) {
-        fetchMessages(selectedRoom.id); // re-fetches everything!
+      // console.log('New message received:', message);
+      if (selectedRoomRef.current && message.room_id === selectedRoomRef.current.id) {
+        setMessages(prev => [...prev, message]);
       }
     });
 
     // FLAW: no socket.off() cleanup - causes memory leaks and duplicate handlers
-    // return () => { socket.off('newMessage'); socket.off('connect'); socket.off('disconnect'); };
-  }, []); // FLAW: missing deps [selectedRoom] - stale closure
+    // Исправлено: добавлена очистка обработчиков при размонтировании компонента
+    return () => {
+      socket.off('newMessage');
+      socket.off('connect');
+      socket.off('disconnect');
+    };
+  }, []); // Исправлено: [] намеренно — selectedRoomRef стабилен, stale closure устранена через ref
 
-  const fetchCurrentUser = async () => {
+  // Исправлено: вместо запроса к /users (который раскрывал хеши паролей) — декодируем username из JWT
+  const fetchCurrentUser = () => {
     // fetches all users just to find current user's username - very inefficient
-    const res = await fetch(`${HARDCODED_API}/users`, {
-      headers: { Authorization: `Bearer ${token}` },
-    });
-    const users = await res.json();
-    const currentUser = users.find((u: any) => u.id === userId);
-    if (currentUser) {
-      setUsername(currentUser.username);
+    try {
+      const payload = JSON.parse(atob(token.split('.')[1]));
+      setUsername(payload.username || '');
+    } catch {
+      setUsername('');
     }
   };
 
   const fetchRooms = async () => {
-    const res = await fetch(`${HARDCODED_API}/chat/rooms`, {
+    const res = await fetch(`${apiUrl}/chat/rooms`, {
       headers: { Authorization: `Bearer ${token}` },
     });
     const data = await res.json();
@@ -88,7 +97,7 @@ export default function ChatPage({ token, userId, socket, apiUrl, onLogout }: Pr
 
   const fetchMessages = async (roomId: number) => {
     setLoadingMessages(true);
-    const res = await fetch(`${HARDCODED_API}/chat/rooms/${roomId}/messages`, {
+    const res = await fetch(`${apiUrl}/chat/rooms/${roomId}/messages`, {
       headers: { Authorization: `Bearer ${token}` },
     });
     const data = await res.json();
@@ -101,6 +110,7 @@ export default function ChatPage({ token, userId, socket, apiUrl, onLogout }: Pr
       socket.emit('leaveRoom', { roomId: selectedRoom.id });
     }
     setSelectedRoom(room);
+    selectedRoomRef.current = room; // Исправлено: обновляем ref синхронно с state
     socket.emit('joinRoom', { roomId: room.id });
     fetchMessages(room.id);
   };
@@ -110,9 +120,9 @@ export default function ChatPage({ token, userId, socket, apiUrl, onLogout }: Pr
 
     socket.emit('sendMessage', {
       roomId: selectedRoom.id,
-      userId,              // FLAW: client supplies userId - no server-side verification
+      // FLAW: client supplies userId - no server-side verification
+      // Исправлено: userId и senderName теперь берутся на сервере из JWT (client.data), клиент их не передаёт
       content: newMessage,
-      senderName: username,
     });
 
     setNewMessage('');
@@ -121,7 +131,7 @@ export default function ChatPage({ token, userId, socket, apiUrl, onLogout }: Pr
   const handleCreateRoom = async () => {
     if (!newRoomName.trim()) return;
 
-    await fetch(`${HARDCODED_API}/chat/rooms`, {
+    await fetch(`${apiUrl}/chat/rooms`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -206,13 +216,11 @@ export default function ChatPage({ token, userId, socket, apiUrl, onLogout }: Pr
         )}
 
         {/* Prop drilling: passing token, socket, apiUrl down just to pass further */}
+        {/* Исправлено: убраны пропы token, socket, apiUrl из RoomList — они там не использовались */}
         <RoomList
           rooms={rooms}
           selectedRoom={selectedRoom}
           onSelectRoom={handleRoomSelect}
-          token={token}
-          socket={socket}
-          apiUrl={apiUrl}
         />
       </div>
 
@@ -228,15 +236,13 @@ export default function ChatPage({ token, userId, socket, apiUrl, onLogout }: Pr
               {loadingMessages ? (
                 <p>Loading messages...</p>
               ) : (
-                messages.map((msg, index) => (
+                messages.map((msg) => (
                   // FLAW: using array index as key
+                  // Исправлено: key={msg.id} вместо index — React корректно отслеживает сообщения при обновлении списка
                   <MessageItem
-                    key={index}
+                    key={msg.id}
                     message={msg}
                     isOwn={msg.user_id === userId}
-                    token={token}
-                    socket={socket}
-                    apiUrl={apiUrl}
                   />
                 ))
               )}

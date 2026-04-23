@@ -1,5 +1,4 @@
 import React from 'react';
-import { Socket } from 'socket.io-client';
 
 interface Room {
   id: number;
@@ -7,16 +6,17 @@ interface Room {
   description?: string;
 }
 
+// Исправлено: убраны пропы-артефакты prop drilling (token, socket, apiUrl) — они никогда не использовались в этом компоненте
 interface Props {
   rooms: Room[];
   selectedRoom: Room | null;
   onSelectRoom: (room: Room) => void;
-  token: string;        // received but only passed down
-  socket: Socket;       // received but only passed down
-  apiUrl: string;       // received but only passed down
+  // token: string;        // received but only passed down
+  // socket: Socket;       // received but only passed down
+  // apiUrl: string;       // received but only passed down
 }
 
-export default function RoomList({ rooms, selectedRoom, onSelectRoom, token, socket, apiUrl }: Props) {
+export default function RoomList({ rooms, selectedRoom, onSelectRoom }: Props) {
   // FLAW: inline function defined in JSX
   const renderRoom = (room: Room, index: number) => (
     <div
